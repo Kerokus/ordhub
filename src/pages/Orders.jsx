@@ -8,6 +8,7 @@ const s3ApiKey = import.meta.env.VITE_S3_API_KEY;
 
 const PAGE_SIZE = 50;
 
+
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [total, setTotal] = useState(0);
@@ -27,8 +28,8 @@ export default function Orders() {
       },
     })
       .then(res => {
-        setOrders(res.data.orders); // <-- fix is here!
-        setTotal(res.data.total);   // <-- save total count!
+        setOrders(res.data.orders); 
+        setTotal(res.data.total);   
       })
       .catch(() => setError("Could not fetch orders."))
       .finally(() => setLoading(false));
@@ -40,11 +41,13 @@ export default function Orders() {
 
   const handleNext = () => setOffset(offset + PAGE_SIZE);
   const handlePrev = () => setOffset(Math.max(0, offset - PAGE_SIZE));
+  const start = total === 0 ? 0 : offset + 1;
+  const end = offset + orders.length;
 
   return (
     <div className="w-full max-w-5xl mx-auto mt-8 flex flex-col items-center">
       <h1 className="text-2xl font-bold mb-6 text-slate-100 text-center">
-        View All Orders: Total Order Count: {total}
+        Viewing {start} - {end} of {total}
       </h1>
       {error && <div className="text-red-400 mb-2">{error}</div>}
       {loading ? (

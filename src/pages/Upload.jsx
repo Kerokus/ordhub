@@ -14,10 +14,21 @@ const orderTypeOptions = [
   "WARNO"
 ];
 
+const classificationOptions = [
+  "SELECT ONE",
+  "CUI",
+  "SECRET",
+  "S//NF",
+  "S//REL"
+];
+
 const fileTypes = [".pdf", ".docx"];
 
 function validateFy(fy) {
   return /^FY\d{2}$/i.test(fy);
+}
+function validateClassification(classif) {
+  return ["CUI", "SECRET", "S//NF", "S//REL"].includes(classif);
 }
 function validateOrderType(type) {
   return ["OPORD", "FRAGO", "WARNO"].includes(type);
@@ -39,6 +50,7 @@ function capitalizeWords(str) {
 }
 
 export default function Upload() {
+  const [classification, setClassification] = useState(classificationOptions[0]);
   const [fy, setFy] = useState("");
   const [orderType, setOrderType] = useState(orderTypeOptions[0]);
   const [orderNumber, setOrderNumber] = useState("");
@@ -84,6 +96,7 @@ export default function Upload() {
   const validate = () => {
     const errs = {};
     if (!validateFy(fy)) errs.fy = true;
+    if (!validateClassification(classification)) errs.classification = true;
     if (!validateOrderType(orderType)) errs.orderType = true;
     if (!validateOrderNumber(orderNumber)) errs.orderNumber = true;
     if (!orderDate) errs.orderDate = true;
@@ -122,12 +135,12 @@ export default function Upload() {
 
       // 3. POST order to DB
       await axios.post(API_URL, {
-        classification: "UNCLASSIFIED", // Adjust as needed
+        classification: classification, 
         order_fy: fy.toUpperCase(),
         order_type: safeOrderType,
         order_number: safeOrderNumber,
-        order_date: orderDate, // already YYYY-MM-DD
-        order_title: capitalizeWords(title),
+        order_date: orderDate, 
+        order_title: title.toUpperCase(),
         order_location: uploadUrl
       }, {
         headers: {
@@ -149,6 +162,22 @@ export default function Upload() {
       <h1 className="text-2xl font-bold mb-6 text-center">Upload New Order</h1>
       <form onSubmit={handleSubmit} autoComplete="off">
         <div className="mb-4 flex flex-col sm:flex-row gap-4">
+          {/* Classification */}
+          <div className="mb-4">
+            <label className="block mb-1">
+              Classification{" "}
+              {errors.classification && <span className="text-red-500">*</span>}
+            </label>
+            <select
+              value={classification}
+              onChange={e => setClassification(e.target.value)}
+              className={`w-full px-3 py-2 rounded bg-slate-700 ${errors.classification ? 'border border-red-500' : 'border border-transparent'}`}
+            >
+              {classificationOptions.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+            </select>
+          </div>
           {/* FY */}
           <div className="flex-1">
             <label className="block mb-1">
@@ -209,8 +238,8 @@ export default function Upload() {
               type="date"
               value={orderDate}
               onChange={e => setOrderDate(e.target.value)}
+              placeholder="YYYY-MM-DD"
               className={`w-full px-3 py-2 rounded bg-slate-700 ${errors.orderDate ? 'border border-red-500' : 'border border-transparent'}`}
-              pattern="\d{4}-\d{2}-\d{2}"
             />
           </div>
         </div>
@@ -224,7 +253,7 @@ export default function Upload() {
           <input
             type="text"
             value={title}
-            onChange={e => setTitle(capitalizeWords(e.target.value))}
+            onChange={e => setTitle(e.target.value)}
             placeholder="ENTER ORDER TITLE HERE..."
             className={`w-full px-3 py-2 rounded bg-slate-700 ${errors.title ? 'border border-red-500' : 'border border-transparent'}`}
           />

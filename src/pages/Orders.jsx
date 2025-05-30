@@ -61,8 +61,8 @@ export default function Orders() {
                   <th className="py-3 px-4 text-left">FY</th>
                   <th className="py-3 px-4 text-left">Type</th>
                   <th className="py-3 px-4 text-left">Number</th>
-                  <th className="py-3 px-4 text-left">Date</th>
-                  <th className="py-3 px-4 text-left">Title</th>
+                  <th className="py-3 px-4 text-left whitespace-nowrap">Date</th>
+                  <th className="py-3 px-4 text-left min-w-[250px]">Title</th>
                   <th className="py-3 px-4 text-center">Download</th>
                 </tr>
               </thead>
@@ -75,10 +75,8 @@ export default function Orders() {
                     <td className="py-2 px-4">{order.order_fy}</td>
                     <td className="py-2 px-4">{order.order_type}</td>
                     <td className="py-2 px-4">{order.order_number}</td>
-                    <td className="py-2 px-4">
-                      {order.order_date ? new Date(order.order_date).toLocaleDateString() : ""}
-                    </td>
-                    <td className="py-2 px-4">{order.order_title}</td>
+                    <td className="py-2 px-4 whitespace-nowrap">{order.order_date}</td>
+                    <td className="py-2 px-4 min-w-[250px]">{order.order_title}</td>
                     <td className="py-2 px-4 flex justify-center">
                       <button
                         onClick={() => handleDownload(order.order_location)}

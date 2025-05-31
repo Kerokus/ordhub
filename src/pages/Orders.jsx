@@ -35,9 +35,36 @@ export default function Orders() {
       .finally(() => setLoading(false));
   }, [offset]);
 
-  const handleDownload = (url) => {
-    window.open(url, "_blank");
-  };
+  const handleDownload = async (url) => {
+  try {
+    const response = await axios.get(url, {
+      headers: { "x-api-key": s3ApiKey },
+      responseType: "blob", // So you get the file data, not JSON
+    });
+
+    // Try to get the filename from the URL or Content-Disposition header
+    let filename = url.split("/").pop();
+    const disposition = response.headers["content-disposition"];
+    if (disposition) {
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      if (match) filename = match[1];
+    }
+
+    // Create a blob link and trigger download
+    const blob = new Blob([response.data]);
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    alert("Failed to download file.");
+  }
+};
+
 
   const handleNext = () => setOffset(offset + PAGE_SIZE);
   const handlePrev = () => setOffset(Math.max(0, offset - PAGE_SIZE));
@@ -58,11 +85,12 @@ export default function Orders() {
             <table className="min-w-full bg-slate-800 rounded-xl">
               <thead>
                 <tr className="text-slate-300">
-                  <th className="py-3 px-4 text-left">FY</th>
-                  <th className="py-3 px-4 text-left">Type</th>
-                  <th className="py-3 px-4 text-left">Number</th>
-                  <th className="py-3 px-4 text-left whitespace-nowrap">Date</th>
-                  <th className="py-3 px-4 text-left min-w-[250px]">Title</th>
+                  <th className="py-3 px-4 text-center">FY</th>
+                  <th className="py-3 px-4 text-center">Type</th>
+                  <th className="py-3 px-4 text-center">Number</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Date</th>
+                  <th className="py-3 px-4 text-center whitespace-nowrap">Classification</th>
+                  <th className="py-3 px-4 text-center min-w-[250px]">Title</th>
                   <th className="py-3 px-4 text-center">Download</th>
                 </tr>
               </thead>
@@ -76,6 +104,7 @@ export default function Orders() {
                     <td className="py-2 px-4">{order.order_type}</td>
                     <td className="py-2 px-4">{order.order_number}</td>
                     <td className="py-2 px-4 whitespace-nowrap">{order.order_date}</td>
+                    <td className="py-2 px-4 text-center whitespace-nowrap">{order.classification}</td>
                     <td className="py-2 px-4 min-w-[250px]">{order.order_title}</td>
                     <td className="py-2 px-4 flex justify-center">
                       <button

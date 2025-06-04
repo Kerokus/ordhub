@@ -37,10 +37,84 @@ export default function Orders() {
 
   const handleDownload = async (url) => {
   try {
+    console.log('Starting download for URL:', url);
+    
     const response = await axios.get(url, {
       headers: { "x-api-key": s3ApiKey },
-      responseType: "blob", // So you get the file data, not JSON
+      responseType: "blob",
     });
+
+    console.log('Response status:', response.status);
+    console.log('Response headers:', response.headers);
+    console.log('Content type:', response.headers['content-type']);
+
+    // Check if we're getting Base64-encoded data (even if content-type says JSON)
+    if (response.headers['content-type'] === 'application/json') {
+      // Convert blob back to text to get the Base64 string
+      const base64Text = await response.data.text();
+      console.log('Base64 data length:', base64Text.length);
+      
+      // Check if it looks like Base64 (starts with common PDF Base64 patterns)
+      if (base64Text.startsWith('JVBERi0x') || base64Text.startsWith('JVBER')) {
+        console.log('Detected Base64-encoded PDF data');
+        
+        // Convert Base64 to binary
+        const binaryString = atob(base64Text);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        
+        // Get filename from URL
+        let filename = url.split("/").pop();
+        if (!filename.includes('.')) {
+          filename += '.pdf'; // Add extension if missing
+        }
+        
+        // Create blob with correct PDF content type
+        const blob = new Blob([bytes], { type: 'application/pdf' });
+        const blobUrl = window.URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = blobUrl;
+        link.download = filename;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(blobUrl);
+        
+        console.log('Base64 PDF download completed successfully');
+        return;
+      } else {
+        // Try to parse as JSON if it's not Base64
+        try {
+          const jsonData = JSON.parse(base64Text);
+          console.log('Parsed JSON:', jsonData);
+          
+          // Check if there's a download URL in the response
+          if (jsonData.downloadUrl || jsonData.url || jsonData.signedUrl) {
+            const actualUrl = jsonData.downloadUrl || jsonData.url || jsonData.signedUrl;
+            console.log('Found actual download URL:', actualUrl);
+            return handleActualFileDownload(actualUrl);
+          }
+        } catch (parseError) {
+          console.error('Not valid JSON either:', parseError);
+        }
+      }
+      
+      alert("Server returned unexpected data format. Check console for details.");
+      return;
+    }
+
+    // Handle direct file download (if server returns actual file with correct content-type)
+    console.log('Response data type:', typeof response.data);
+    console.log('Response data size:', response.data.size);
+    console.log('Is blob?', response.data instanceof Blob);
+
+    if (response.data.size === 0) {
+      console.error('Received empty blob');
+      alert("Received empty file. Check server response.");
+      return;
+    }
 
     // Try to get the filename from the URL or Content-Disposition header
     let filename = url.split("/").pop();
@@ -50,8 +124,14 @@ export default function Orders() {
       if (match) filename = match[1];
     }
 
-    // Create a blob link and trigger download
-    const blob = new Blob([response.data]);
+    console.log('Filename:', filename);
+
+    // Use the actual content type from the response
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+    console.log('Content type:', contentType);
+    
+    // Create blob with the correct content type
+    const blob = new Blob([response.data], { type: contentType });
     const blobUrl = window.URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = blobUrl;
@@ -60,8 +140,57 @@ export default function Orders() {
     link.click();
     link.remove();
     window.URL.revokeObjectURL(blobUrl);
+
   } catch (error) {
+    console.error('Download error:', error);
+    console.error('Error response:', error.response);
     alert("Failed to download file.");
+  }
+};
+
+// Keep the handleActualFileDownload function as backup
+const handleActualFileDownload = async (url) => {
+  try {
+    console.log('Downloading actual file from:', url);
+    
+    const response = await axios.get(url, {
+      responseType: "blob",
+    });
+
+    console.log('Actual file response status:', response.status);
+    console.log('Actual file content type:', response.headers['content-type']);
+    console.log('Actual file size:', response.data.size);
+
+    if (response.data.size === 0) {
+      console.error('Received empty file');
+      alert("Received empty file.");
+      return;
+    }
+
+    let filename = url.split("/").pop().split("?")[0];
+    const disposition = response.headers["content-disposition"];
+    if (disposition) {
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      if (match) filename = match[1];
+    }
+
+    const contentType = response.headers['content-type'] || 'application/pdf';
+    
+    const blob = new Blob([bytes], { type: contentType });
+    const blobUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(blobUrl);
+
+    console.log('File download completed successfully');
+
+  } catch (error) {
+    console.error('Actual download error:', error);
+    alert("Failed to download actual file.");
   }
 };
 
